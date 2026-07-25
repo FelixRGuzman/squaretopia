@@ -1,75 +1,172 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Squaretopia</title>
     <style>
-        body { background: #12121a; color: #eee; font-family: sans-serif;
-               display: flex; justify-content: center; align-items: center;
-               height: 100vh; margin: 0; }
-        .box { background: #1e1e2a; padding: 40px; border-radius: 12px; width: 300px; }
-        h1 { text-align: center; margin-top: 0; }
-        input { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box;
-                background: #2a2a38; border: none; border-radius: 6px; color: #eee; }
-        button { width: 100%; padding: 12px; margin-top: 12px; border: none;
-                 border-radius: 6px; background: #3498db; color: white;
-                 font-size: 16px; cursor: pointer; }
-        button.alt { background: #444; }
-        #msg { text-align: center; margin-top: 12px; min-height: 20px; color: #ff6b6b; }
+        body { font-family: 'Segoe UI', sans-serif; background: #12121a; color: white; text-align: center; padding-top: 50px; }
+        .card { background: #1e1e2a; padding: 30px; border-radius: 12px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 340px; }
+        .hidden { display: none; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #444; background: #12121a; color: white; }
+        button { padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
+        .btn-login { background: #3498db; color: white; width: 100%; }
+        .btn-save { background: #3498db; color: white; }
+        .btn-launch { background: #2ecc71; color: white; width: 100%; font-size: 1.1rem; margin-top: 20px; }
+        .btn-logout { background: #e74c3c; color: white; font-size: 0.8rem; margin-top: 20px; }
+        input[type="color"] { width: 60px; height: 60px; vertical-align: middle; background: none; border: none; cursor: pointer; }
+        #auth-toggle-text { font-size: 0.85rem; margin-top: 15px; cursor: pointer; color: #3498db; text-decoration: underline; }
+        #msg { min-height: 20px; margin-top: 10px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>Squaretopia</h1>
-        <input id="username" placeholder="Username" />
-        <input id="password" type="password" placeholder="Password" />
-        <button onclick="login()">Log In &amp; Launch</button>
-        <button class="alt" onclick="register()">Register</button>
+
+    <!-- LOGIN / REGISTER -->
+    <!-- The first screen. The same two fields are used for both logging in and registering, and the toggle text at the bottom switches between them. -->
+    
+    <div id="login-section" class="card">
+        <h1 id="auth-title">Squaretopia Login</h1>
+        <input type="text" id="login-username" placeholder="Username">
+        <input type="password" id="login-password" placeholder="Password">
+        <button id="auth-btn" class="btn-login" onclick="login()">LOGIN</button>
+        <p id="auth-toggle-text" onclick="toggleAuth()">Need an account? Register here.</p>
         <div id="msg"></div>
     </div>
 
+    <!-- DASHBOARD -->
+    <!-- Shown after a successful login. Pick a color, save it, then launch the client, which opens as this user in the saved color. -->
+    
+    <div id="dashboard-section" class="card hidden">
+        <h1>Welcome, <span id="display-name"></span></h1>
+        <p style="color:#888; font-size:0.8rem;">Pick your square's color, save, then launch.</p>
+        <input type="color" id="colorPicker">
+        <button class="btn-save" onclick="saveProfile()">SAVE COLOR</button>
+
+        <button class="btn-launch" onclick="launchClient()">LAUNCH CLIENT</button>
+
+        <button class="btn-logout" onclick="logout()">LOGOUT</button>
+    </div>
+
     <script>
+
+        // Tracks who is logged in, and whether the login form is currently in register mode. 
+       
+        let loggedInUser = null;
+        let isRegistering = false;
         const msg = document.getElementById('msg');
 
-        function creds() {
-            return {
-                username: document.getElementById('username').value,
-                password: document.getElementById('password').value
-            };
+        // Remember the session across page loads, like the old client did.
+        // If a user was saved last time, skip straight to the dashboard and sync the color picker to whatever is stored in the database.
+
+        window.onload = function() {
+            const savedUser = localStorage.getItem("squaretopia_user");
+            if (savedUser) {
+                loggedInUser = savedUser;
+                showDashboard();
+                fetch('/api/player/' + loggedInUser)
+                    .then(r => r.json())
+                    .then(data => { if (data.color) document.getElementById('colorPicker').value = data.color; })
+                    .catch(e => console.log("Could not sync color", e));
+            }
+        };
+
+        // Swap the login form over to the dashboard view.
+
+        function showDashboard() {
+            document.getElementById('display-name').innerText = loggedInUser;
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
         }
+
+        // Changes the form between Login and Register mode.
+        
+        function toggleAuth() {
+            isRegistering = !isRegistering;
+            const title = document.getElementById('auth-title');
+            const btn = document.getElementById('auth-btn');
+            const toggle = document.getElementById('auth-toggle-text');
+            if (isRegistering) {
+                title.innerText = "Squaretopia Registration";
+                btn.innerText = "CREATE ACCOUNT";
+                btn.onclick = register;
+                toggle.innerText = "Already have an account? Login.";
+            } else {
+                title.innerText = "Squaretopia Login";
+                btn.innerText = "LOGIN";
+                btn.onclick = login;
+                toggle.innerText = "Need an account? Register here.";
+            }
+        }
+
+        // Sends the login details to the backend.
+        // On success it saves the session, shows the dashboard, and loads the user's saved color into the picker.
+        
+        async function login() {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                loggedInUser = data.username;
+                localStorage.setItem("squaretopia_user", loggedInUser);
+                showDashboard();
+                document.getElementById('colorPicker').value = data.color;
+            } else {
+                msg.style.color = '#ff6b6b';
+                msg.innerText = "Invalid login.";
+            }
+        }
+
+        // Creates a new account, then changes back to login mode so the user can sign in with it.
 
         async function register() {
-            const res = await fetch('/api/register', {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            if (!user || !pass) { msg.style.color = '#ff6b6b'; msg.innerText = "Please fill both fields."; return; }
+            const response = await fetch('/api/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(creds())
+                body: JSON.stringify({ username: user, password: pass })
             });
-            const data = await res.json();
-            if (data.success) {
+            if (response.ok) {
                 msg.style.color = '#6bff6b';
-                msg.textContent = 'Registered! Now log in.';
+                msg.innerText = "Account created! Now log in.";
+                toggleAuth();
             } else {
+                const data = await response.json();
                 msg.style.color = '#ff6b6b';
-                msg.textContent = data.error || 'Registration failed.';
+                msg.innerText = data.error || "Registration failed.";
             }
         }
 
-        async function login() {
-            const c = creds();
-            const res = await fetch('/api/login', {
+        // Saves the chosen color to the user's account in the database.
+
+        async function saveProfile() {
+            const color = document.getElementById('colorPicker').value;
+            await fetch('/api/update-profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(c)
+                body: JSON.stringify({ username: loggedInUser, color: color })
             });
-            if (res.ok) {
-                msg.style.color = '#6bff6b';
-                msg.textContent = 'Launching client...';
-                // Use the custom protocol link which Windows hands to the Rust client.
-                window.location.href = 'squaretopia://launch?username=' + encodeURIComponent(c.username);
-            } else {
-                const data = await res.json();
-                msg.style.color = '#ff6b6b';
-                msg.textContent = data.error || 'Login failed.';
-            }
+            alert("Color saved! It will show next time you launch.");
+        }
+
+        // Fires the custom protocol link. Windows hands this to the Rust exe,
+        // which reads the username, fetches this saved color, and opens as logged in user.
+
+        function launchClient() {
+            window.location.href = 'squaretopia://launch?username=' + encodeURIComponent(loggedInUser);
+        }
+
+        // Clears the saved session and reloads back to the login screen.
+
+        function logout() {
+            localStorage.removeItem("squaretopia_user");
+            location.reload();
         }
     </script>
 </body>

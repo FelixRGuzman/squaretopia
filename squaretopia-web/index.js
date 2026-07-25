@@ -1,12 +1,20 @@
+// Load the database password from the .env file into process.env so it is not
+// written directly in this source file.
 require('dotenv').config();
+
 const express = require('express');
 const mysql = require('mysql2');
 const app = express();
 
+// Let the server read JSON request bodies, and serve the login page and any
+// other files sitting in the public folder.
 app.use(express.json());
 app.use(express.static('public'));
 
-// Database connection pool
+// The database connection pool.
+// A pool keeps a set of reusable connections open instead of opening a new one
+// per request. The password comes from .env, everything else points at the
+// local squaretopia_db database.
 const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
@@ -17,6 +25,8 @@ const db = mysql.createPool({
 }).promise();
 
 // REGISTER
+// Creates a new account. Rejects missing fields, and rejects a username that
+// is already taken so two accounts cannot share one name.
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
     console.log(`[Register] Attempt: ${username}`);
@@ -24,10 +34,13 @@ app.post('/api/register', async (req, res) => {
         return res.status(400).json({ error: "Username and password are required." });
     }
     try {
+        // The ? placeholders let the driver insert the values safely instead of
+        // pasting them straight into the SQL, which prevents SQL injection.
         const [existing] = await db.query('SELECT id FROM users WHERE username = ?', [username]);
         if (existing.length > 0) {
             return res.status(400).json({ error: "Username already taken." });
         }
+        // New accounts start with a default blue color until the user changes it.
         await db.query(
             'INSERT INTO users (username, password, color) VALUES (?, ?, ?)',
             [username, password, '#3498db']
@@ -40,7 +53,9 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-//  LOGIN 
+// LOGIN
+// Checks the username and password against the database.
+// On success it returns the username and saved color, which the dashboard uses.
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -56,7 +71,23 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-//  PLAYER PROFILE (the route the Rust client calls)
+// UPDATE COLOR
+// Saves the color the user picked on the dashboard back to their account, so
+// the client can load it later.
+app.post('/api/update-profile', async (req, res) => {
+    const { username, color } = req.body;
+    try {
+        await db.query('UPDATE users SET color = ? WHERE username = ?', [color, username]);
+        console.log(`[Profile] ${username} set color to ${color}`);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: "DB Error" });
+    }
+});
+
+// PLAYER PROFILE (the route the Rust client calls)
+// When the client launches, it asks here for the logged-in user's username and
+// color. Returns 404 if no such account exists, which the client treats as a guest.
 app.get('/api/player/:username', async (req, res) => {
     try {
         const [rows] = await db.query(
@@ -70,6 +101,7 @@ app.get('/api/player/:username', async (req, res) => {
     }
 });
 
+// Start the server and listen for requests on port 3000.
 app.listen(3000, () => {
     console.log("-----------------------------------------");
     console.log("SQUARETOPIA WEB READY: http://localhost:3000");
