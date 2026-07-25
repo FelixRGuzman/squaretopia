@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Squaretopia</title>
+    <style>
+        body { background: #12121a; color: #eee; font-family: sans-serif;
+               display: flex; justify-content: center; align-items: center;
+               height: 100vh; margin: 0; }
+        .box { background: #1e1e2a; padding: 40px; border-radius: 12px; width: 300px; }
+        h1 { text-align: center; margin-top: 0; }
+        input { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box;
+                background: #2a2a38; border: none; border-radius: 6px; color: #eee; }
+        button { width: 100%; padding: 12px; margin-top: 12px; border: none;
+                 border-radius: 6px; background: #3498db; color: white;
+                 font-size: 16px; cursor: pointer; }
+        button.alt { background: #444; }
+        #msg { text-align: center; margin-top: 12px; min-height: 20px; color: #ff6b6b; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Squaretopia</h1>
+        <input id="username" placeholder="Username" />
+        <input id="password" type="password" placeholder="Password" />
+        <button onclick="login()">Log In &amp; Launch</button>
+        <button class="alt" onclick="register()">Register</button>
+        <div id="msg"></div>
+    </div>
+
+    <script>
+        const msg = document.getElementById('msg');
+
+        function creds() {
+            return {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+        }
+
+        async function register() {
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(creds())
+            });
+            const data = await res.json();
+            if (data.success) {
+                msg.style.color = '#6bff6b';
+                msg.textContent = 'Registered! Now log in.';
+            } else {
+                msg.style.color = '#ff6b6b';
+                msg.textContent = data.error || 'Registration failed.';
+            }
+        }
+
+        async function login() {
+            const c = creds();
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(c)
+            });
+            if (res.ok) {
+                msg.style.color = '#6bff6b';
+                msg.textContent = 'Launching client...';
+                // Use the custom protocol link which Windows hands to the Rust client.
+                window.location.href = 'squaretopia://launch?username=' + encodeURIComponent(c.username);
+            } else {
+                const data = await res.json();
+                msg.style.color = '#ff6b6b';
+                msg.textContent = data.error || 'Login failed.';
+            }
+        }
+    </script>
+</body>
+</html>
