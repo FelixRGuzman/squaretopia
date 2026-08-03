@@ -4,53 +4,132 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Squaretopia</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #12121a; color: white; text-align: center; padding-top: 50px; }
-        .card { background: #1e1e2a; padding: 30px; border-radius: 12px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 340px; }
-        .hidden { display: none; }
-        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #444; background: #12121a; color: white; }
-        button { padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 5px; }
-        .btn-login { background: #3498db; color: white; width: 100%; }
-        .btn-save { background: #3498db; color: white; }
-        .btn-launch { background: #2ecc71; color: white; width: 100%; font-size: 1.1rem; margin-top: 20px; }
-        .btn-logout { background: #e74c3c; color: white; font-size: 0.8rem; margin-top: 20px; }
-        input[type="color"] { width: 60px; height: 60px; vertical-align: middle; background: none; border: none; cursor: pointer; }
-        #auth-toggle-text { font-size: 0.85rem; margin-top: 15px; cursor: pointer; color: #3498db; text-decoration: underline; }
-        #msg { min-height: 20px; margin-top: 10px; font-size: 0.9rem; }
-    </style>
+    <!-- All styling lives in style.css so this page and the profile page stay consistent. -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <!-- LOGIN / REGISTER -->
     <!-- The first screen. The same two fields are used for both logging in and registering, and the toggle text at the bottom switches between them. -->
-    
-    <div id="login-section" class="card">
-        <h1 id="auth-title">Squaretopia Login</h1>
-        <input type="text" id="login-username" placeholder="Username">
-        <input type="password" id="login-password" placeholder="Password">
-        <button id="auth-btn" class="btn-login" onclick="login()">LOGIN</button>
-        <p id="auth-toggle-text" onclick="toggleAuth()">Need an account? Register here.</p>
-        <div id="msg"></div>
+
+    <div id="login-section" class="login-wrap">
+        <div class="panel">
+            <div class="panel-head" id="auth-title">Squaretopia Login</div>
+            <div class="panel-body">
+                <p class="login-label">Member login</p>
+                <input type="text" id="login-username" placeholder="Username">
+                <div class="spacer"></div>
+                <input type="password" id="login-password" placeholder="Password">
+                <div class="spacer"></div>
+                <button id="auth-btn" class="btn-blue btn-full" onclick="login()">SIGN IN</button>
+                <p id="auth-toggle-text" onclick="toggleAuth()">Not a member? Sign up here!!!</p>
+                <div id="msg"></div>
+
+                <!-- GUEST -->
+                <!-- Opens the client without an account. The link has no username on it, so the client falls back to guest mode on its own. -->
+
+                <div class="guest-block">
+                    <button class="btn-grey btn-full" onclick="launchAsGuest()">PLAY AS GUEST</button>
+                    <p class="guest-note">Opens the client without logging in. You will not have a saved color.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- DASHBOARD -->
-    <!-- Shown after a successful login. Pick a color, save it, then launch the client, which opens as this user in the saved color. -->
-    
-    <div id="dashboard-section" class="card hidden">
-        <h1>Welcome, <span id="display-name"></span></h1>
-        <p style="color:#888; font-size:0.8rem;">Pick your square's color, save, then launch.</p>
-        <input type="color" id="colorPicker">
-        <button class="btn-save" onclick="saveProfile()">SAVE COLOR</button>
+    <!-- Shown after a successful login. Three columns like the old game portals, your member panel and search on the left, the launch area in the middle, and news plus the live hash table stats on the right. -->
 
-        <button class="btn-launch" onclick="launchClient()">LAUNCH CLIENT</button>
+    <div id="dashboard-section" class="hidden">
 
-        <button class="btn-logout" onclick="logout()">LOGOUT</button>
+        <div class="topbar">
+            <div class="brand">SQUARE<span>TOPIA</span></div>
+            <div class="topnav">
+                <a href="#" onclick="showDirectory(); return false;">Players</a>
+                <a href="#" onclick="goToMyProfile(); return false;">My Profile</a>
+                <a href="#" onclick="launchClient(); return false;">Launch</a>
+            </div>
+            <div class="topbar-user">Signed in as <b id="topbar-name"></b> &nbsp;|&nbsp; <a href="#" onclick="logout(); return false;">Sign Out</a></div>
+        </div>
+
+        <div class="wrap">
+            <div class="columns">
+
+                <!-- LEFT COLUMN -->
+                <div class="col-left">
+
+                    <div class="panel">
+                        <div class="panel-head">Member</div>
+                        <div class="panel-body">
+                            <div class="member-square" id="member-square"></div>
+                            <div class="member-name" id="display-name"></div>
+                            <div class="member-bio" id="member-bio"></div>
+                            <button class="btn-grey btn-full" onclick="goToMyProfile()">EDIT PROFILE</button>
+                        </div>
+                    </div>
+
+                    <!-- PLAYER SEARCH -->
+                    <!-- Type part of a username to find other players. This runs against the hash table, and clicking a result opens that player's profile. -->
+
+                    <div class="panel">
+                        <div class="panel-head">Find Players</div>
+                        <div class="panel-body">
+                            <input type="text" id="search-input" placeholder="Search by username" autocomplete="off" oninput="searchPlayers()">
+                            <div id="search-results"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- MIDDLE COLUMN -->
+                <div class="col-mid">
+
+                    <div class="panel">
+                        <div class="panel-head">Featured</div>
+                        <div class="panel-body feature">
+                            <h2>Welcome back, <span id="feature-name"></span></h2>
+                            <p>Pick your square's color, save it, then launch the client.</p>
+                            <div class="big-square" id="big-square"></div>
+                            <div class="color-row">
+                                <input type="color" id="colorPicker">
+                                <button class="btn-blue" onclick="saveProfile()">SAVE COLOR</button>
+                            </div>
+                            <button class="btn-green" onclick="launchClient()">LAUNCH SQUARETOPIA</button>
+                        </div>
+                    </div>
+
+                    <!-- PLAYER DIRECTORY -->
+                    <!-- Every account in alphanumeric order, which is printCourseList from CS 300 doing the same job with players in it. -->
+
+                    <div class="panel">
+                        <div class="panel-head">Player Directory</div>
+                        <div class="panel-body">
+                            <div id="directory" class="dir-grid"></div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="footer">
+                <div class="footer-links">
+                    <a href="#" onclick="showDirectory(); return false;">Players</a> |
+                    <a href="#" onclick="goToMyProfile(); return false;">My Profile</a> |
+                    <a href="#" onclick="launchClient(); return false;">Launch Client</a> |
+                    <a href="#" onclick="logout(); return false;">Sign Out</a>
+                </div>
+                <div class="footer-small">
+                    Squaretopia is a capstone project built by Felix for CS 499, the Computer Science Capstone at SNHU.
+                    The client is written in Rust with Bevy and the site runs on Node, Express, and MySQL.
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
 
-        // Tracks who is logged in, and whether the login form is currently in register mode. 
-       
+        // Tracks who is logged in, and whether the login form is currently in register mode.
+
         let loggedInUser = null;
         let isRegistering = false;
         const msg = document.getElementById('msg');
@@ -63,23 +142,49 @@
             if (savedUser) {
                 loggedInUser = savedUser;
                 showDashboard();
-                fetch('/api/player/' + loggedInUser)
-                    .then(r => r.json())
-                    .then(data => { if (data.color) document.getElementById('colorPicker').value = data.color; })
-                    .catch(e => console.log("Could not sync color", e));
+                loadMyProfile();
             }
         };
 
-        // Swap the login form over to the dashboard view.
+        // Swap the login form over to the dashboard view, then fill in the panels
+        // that need data from the server.
 
         function showDashboard() {
             document.getElementById('display-name').innerText = loggedInUser;
+            document.getElementById('feature-name').innerText = loggedInUser;
+            document.getElementById('topbar-name').innerText = loggedInUser;
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('dashboard-section').classList.remove('hidden');
+            showDirectory();
+        }
+
+        // Pulls your own profile so the member panel shows your real color and bio.
+
+        async function loadMyProfile() {
+            try {
+                const response = await fetch('/api/profile/' + encodeURIComponent(loggedInUser));
+                if (!response.ok) return;
+                const data = await response.json();
+                applyMyProfile(data.color, data.bio);
+            } catch (e) {
+                console.log("Could not load profile", e);
+            }
+        }
+
+        // Puts the color and bio into the panels. Kept in one place so saving a color
+        // and loading the page both end up doing the same thing.
+
+        function applyMyProfile(color, bio) {
+            if (/^#[0-9a-fA-F]{6}$/.test(color || "")) {
+                document.getElementById('colorPicker').value = color;
+                document.getElementById('member-square').style.backgroundColor = color;
+                document.getElementById('big-square').style.backgroundColor = color;
+            }
+            document.getElementById('member-bio').textContent = bio || "No bio yet.";
         }
 
         // Changes the form between Login and Register mode.
-        
+
         function toggleAuth() {
             isRegistering = !isRegistering;
             const title = document.getElementById('auth-title');
@@ -89,18 +194,18 @@
                 title.innerText = "Squaretopia Registration";
                 btn.innerText = "CREATE ACCOUNT";
                 btn.onclick = register;
-                toggle.innerText = "Already have an account? Login.";
+                toggle.innerText = "Already have an account? Sign in.";
             } else {
                 title.innerText = "Squaretopia Login";
-                btn.innerText = "LOGIN";
+                btn.innerText = "SIGN IN";
                 btn.onclick = login;
-                toggle.innerText = "Need an account? Register here.";
+                toggle.innerText = "Not a member? Sign up here!!!";
             }
         }
 
         // Sends the login details to the backend.
         // On success it saves the session, shows the dashboard, and loads the user's saved color into the picker.
-        
+
         async function login() {
             const user = document.getElementById('login-username').value;
             const pass = document.getElementById('login-password').value;
@@ -114,7 +219,7 @@
                 loggedInUser = data.username;
                 localStorage.setItem("squaretopia_user", loggedInUser);
                 showDashboard();
-                document.getElementById('colorPicker').value = data.color;
+                loadMyProfile();
             } else {
                 msg.style.color = '#ff6b6b';
                 msg.innerText = "Invalid login.";
@@ -134,7 +239,7 @@
             });
             if (response.ok) {
                 msg.style.color = '#6bff6b';
-                msg.innerText = "Account created! Now log in.";
+                msg.innerText = "Account created! Now sign in.";
                 toggleAuth();
             } else {
                 const data = await response.json();
@@ -152,6 +257,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: loggedInUser, color: color })
             });
+            document.getElementById('member-square').style.backgroundColor = color;
+            document.getElementById('big-square').style.backgroundColor = color;
+            showDirectory();
             alert("Color saved! It will show next time you launch.");
         }
 
@@ -160,6 +268,145 @@
 
         function launchClient() {
             window.location.href = 'squaretopia://launch?username=' + encodeURIComponent(loggedInUser);
+        }
+
+        // Same link with no username on it. The client already opens as a guest when it
+        // cannot find one, so this needed no changes on the client side.
+
+        function launchAsGuest() {
+            window.location.href = 'squaretopia://launch';
+        }
+
+        // Opens a player's profile page. Your own profile is the same page, it just
+        // lets you edit the bio when the name matches who is signed in.
+
+        function openProfile(username) {
+            window.location.href = 'profile.html?user=' + encodeURIComponent(username);
+        }
+
+        function goToMyProfile() {
+            openProfile(loggedInUser);
+        }
+
+        // PLAYER SEARCH
+        // Runs as the user types, but waits for a short pause first instead of firing
+        // a request on every single keystroke.
+
+        let searchTimer = null;
+
+        function searchPlayers() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(runSearch, 200);
+        }
+
+        async function runSearch() {
+            const term = document.getElementById('search-input').value.trim();
+            const box = document.getElementById('search-results');
+
+            // Nothing typed, so show nothing rather than every account.
+            if (term.length === 0) {
+                box.replaceChildren();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/search?q=' + encodeURIComponent(term));
+
+                if (!response.ok) {
+                    showSearchNote(box, "Search is unavailable right now.");
+                    return;
+                }
+
+                const data = await response.json();
+                renderResults(box, data.results);
+            } catch (err) {
+                showSearchNote(box, "Could not reach the server.");
+            }
+        }
+
+        // Draws the result rows.
+
+        function renderResults(box, results) {
+            box.replaceChildren();
+
+            if (!results || results.length === 0) {
+                showSearchNote(box, "No players match that name.");
+                return;
+            }
+
+            for (const player of results) {
+                const row = document.createElement('div');
+                row.className = 'result-row';
+                row.onclick = () => openProfile(player.username);
+
+                // The saved color as a small swatch, only used if it actually looks
+                // like a hex color (same idea as the client's color check).
+                const swatch = document.createElement('div');
+                swatch.className = 'result-swatch';
+                if (/^#[0-9a-fA-F]{6}$/.test(player.color || "")) {
+                    swatch.style.backgroundColor = player.color;
+                }
+
+                const name = document.createElement('span');
+                name.className = 'result-name';
+                name.textContent = player.username;
+
+                row.append(swatch, name);
+
+                // Mark your own account so the list is not confusing.
+                if (player.username === loggedInUser) {
+                    const you = document.createElement('span');
+                    you.className = 'result-you';
+                    you.textContent = 'you';
+                    row.append(you);
+                }
+
+                box.append(row);
+            }
+        }
+
+        // One place for the empty and error messages in the results area.
+
+        function showSearchNote(box, text) {
+            box.replaceChildren();
+            const note = document.createElement('p');
+            note.className = 'search-note';
+            note.textContent = text;
+            box.append(note);
+        }
+
+        // PLAYER DIRECTORY
+        // Asks for every account in alphanumeric order and draws them as cards.
+
+        async function showDirectory() {
+            const grid = document.getElementById('directory');
+            try {
+                const response = await fetch('/api/players');
+                if (!response.ok) return;
+                const data = await response.json();
+
+                grid.replaceChildren();
+                for (const player of data.players) {
+                    const card = document.createElement('div');
+                    card.className = 'dir-card';
+                    card.onclick = () => openProfile(player.username);
+
+                    const sq = document.createElement('div');
+                    sq.className = 'dir-square';
+                    if (/^#[0-9a-fA-F]{6}$/.test(player.color || "")) {
+                        sq.style.backgroundColor = player.color;
+                    }
+
+                    const nm = document.createElement('div');
+                    nm.className = 'dir-name';
+                    nm.textContent = player.username;
+
+                    card.append(sq, nm);
+                    grid.append(card);
+                }
+            } catch (e) {
+                console.log("Could not load directory", e);
+            }
         }
 
         // Clears the saved session and reloads back to the login screen.

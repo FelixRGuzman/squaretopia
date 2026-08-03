@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squaretopia Profile</title>
+    <style>
+        /* Same look as the dashboard so the two pages feel like one site. */
+
+        body { font-family: Verdana, Geneva, Tahoma, sans-serif; background: #0d0d14; color: #ddd; margin: 0; font-size: 12px; }
+        a { color: #4aa3df; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .topbar { background: linear-gradient(#252538, #16161f); border-bottom: 2px solid #3498db; padding: 0 15px; display: flex; align-items: center; gap: 20px; height: 42px; }
+        .brand { font-size: 1.25rem; font-weight: bold; color: white; letter-spacing: 1px; }
+        .brand span { color: #3498db; }
+        .topnav { display: flex; gap: 15px; flex: 1; }
+        .topnav a { color: #ccc; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar-user { font-size: 0.75rem; color: #888; }
+
+        .wrap { max-width: 720px; margin: 16px auto; padding: 0 10px; }
+        .panel { background: #1a1a26; border: 1px solid #2c2c3a; margin-bottom: 12px; }
+        .panel-head { background: linear-gradient(#2f2f45, #232332); padding: 6px 10px; font-size: 0.72rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #bbb; border-bottom: 1px solid #2c2c3a; }
+        .panel-body { padding: 14px; }
+
+        button { font-family: inherit; border: none; border-radius: 3px; font-weight: bold; cursor: pointer; padding: 7px 14px; font-size: 0.75rem; }
+        .btn-blue { background: linear-gradient(#4aa3df, #2e86c1); color: white; }
+        .btn-grey { background: #33334a; color: #ccc; }
+        button:hover { filter: brightness(1.12); }
+
+        textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 3px; border: 1px solid #3a3a4d; background: #0f0f18; color: white; font-family: inherit; font-size: 0.78rem; resize: vertical; min-height: 70px; }
+
+        /* Profile header */
+        .profile-top { display: flex; gap: 16px; align-items: flex-start; }
+        .profile-square { width: 110px; height: 110px; border: 3px solid #2c2c3a; flex-shrink: 0; }
+        .profile-info { flex: 1; min-width: 0; }
+        .profile-name { font-size: 1.6rem; font-weight: bold; color: white; margin: 0 0 4px; word-wrap: break-word; }
+        .profile-meta { color: #777; font-size: 0.72rem; margin-bottom: 10px; }
+        .profile-bio { color: #bbb; font-size: 0.8rem; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; }
+
+        .swatch-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: #888; font-size: 0.72rem; }
+        .swatch-chip { width: 16px; height: 16px; border: 1px solid #444; }
+
+        .notice { color: #888; text-align: center; padding: 30px 10px; font-size: 0.82rem; }
+        .char-count { color: #666; font-size: 0.68rem; text-align: right; margin-top: 4px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="brand">SQUARE<span>TOPIA</span></div>
+        <div class="topnav">
+            <a href="index.html">Home</a>
+        </div>
+        <div class="topbar-user"><a href="index.html">Back to dashboard</a></div>
+    </div>
+
+    <div class="wrap">
+
+        <!-- PROFILE -->
+        <!-- Shows one player. The username comes from the link, and the backend looks them up in the hash table. -->
+
+        <div class="panel">
+            <div class="panel-head">Player Profile</div>
+            <div class="panel-body" id="profile-body">
+                <p class="notice">Loading profile...</p>
+            </div>
+        </div>
+
+        <!-- BIO EDITOR -->
+        <!-- Only shown when the profile being viewed is your own account. -->
+
+        <div class="panel hidden" id="edit-panel">
+            <div class="panel-head">Edit Your Bio</div>
+            <div class="panel-body">
+                <textarea id="bio-input" maxlength="200" placeholder="Say something about yourself" oninput="updateCount()"></textarea>
+                <div class="char-count"><span id="char-count">0</span> / 200</div>
+                <div style="height:8px;"></div>
+                <button class="btn-blue" onclick="saveBio()">SAVE BIO</button>
+                <button class="btn-grey" onclick="location.href='index.html'">BACK</button>
+                <span id="save-msg" style="margin-left:10px; font-size:0.72rem;"></span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+
+        // Who is signed in, and which profile this page was asked to show.
+
+        const loggedInUser = localStorage.getItem("squaretopia_user");
+        const params = new URLSearchParams(window.location.search);
+        const viewingUser = params.get('user');
+
+        // Ask the backend for this player, then draw them.
+        // If the link has no username on it, or the account does not exist, we say so
+        // instead of showing an empty page.
+
+        window.onload = function() {
+            if (!viewingUser) {
+                showNotice("No player was specified.");
+                return;
+            }
+            loadProfile();
+        };
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/profile/' + encodeURIComponent(viewingUser));
+
+                if (response.status === 404) {
+                    showNotice("That player does not exist.");
+                    return;
+                }
+                if (!response.ok) {
+                    showNotice("Could not load that profile.");
+                    return;
+                }
+
+                const data = await response.json();
+                renderProfile(data);
+            } catch (err) {
+                showNotice("Could not reach the server.");
+            }
+        }
+
+        // Draws the profile.
+        // Same rule as the dashboard, everything the player controls is written with
+        // textContent so a username or bio cannot inject HTML into the page.
+
+        function renderProfile(data) {
+            const body = document.getElementById('profile-body');
+            body.replaceChildren();
+
+            const top = document.createElement('div');
+            top.className = 'profile-top';
+
+            const square = document.createElement('div');
+            square.className = 'profile-square';
+            const validColor = /^#[0-9a-fA-F]{6}$/.test(data.color || "");
+            if (validColor) {
+                square.style.backgroundColor = data.color;
+            }
+
+            const info = document.createElement('div');
+            info.className = 'profile-info';
+
+            const name = document.createElement('h1');
+            name.className = 'profile-name';
+            name.textContent = data.username;
+
+            const meta = document.createElement('div');
+            meta.className = 'profile-meta';
+            meta.textContent = (data.username === loggedInUser) ? "This is your profile" : "Squaretopia member";
+
+            const bio = document.createElement('div');
+            bio.className = 'profile-bio';
+            bio.textContent = data.bio && data.bio.trim().length > 0 ? data.bio : "This player has not written a bio yet.";
+
+            info.append(name, meta, bio);
+
+            // The color they are currently wearing in the client.
+            const swatchRow = document.createElement('div');
+            swatchRow.className = 'swatch-row';
+            const chip = document.createElement('span');
+            chip.className = 'swatch-chip';
+            if (validColor) chip.style.backgroundColor = data.color;
+            const label = document.createElement('span');
+            label.textContent = "Square color: " + (validColor ? data.color : "not set");
+            swatchRow.append(chip, label);
+            info.append(swatchRow);
+
+            top.append(square, info);
+            body.append(top);
+
+            // Only your own profile gets the editor.
+            if (data.username === loggedInUser) {
+                document.getElementById('edit-panel').classList.remove('hidden');
+                document.getElementById('bio-input').value = data.bio || "";
+                updateCount();
+            }
+        }
+
+        function showNotice(text) {
+            const body = document.getElementById('profile-body');
+            body.replaceChildren();
+            const p = document.createElement('p');
+            p.className = 'notice';
+            p.textContent = text;
+            body.append(p);
+        }
+
+        // Saves the bio, then redraws so what you see is what actually got stored.
+
+        async function saveBio() {
+            const bio = document.getElementById('bio-input').value;
+            const saveMsg = document.getElementById('save-msg');
+
+            try {
+                const response = await fetch('/api/update-bio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: loggedInUser, bio: bio })
+                });
+
+                if (!response.ok) {
+                    saveMsg.style.color = '#ff6b6b';
+                    saveMsg.textContent = "Could not save.";
+                    return;
+                }
+
+                saveMsg.style.color = '#6bff6b';
+                saveMsg.textContent = "Saved!";
+                loadProfile();
+            } catch (err) {
+                saveMsg.style.color = '#ff6b6b';
+                saveMsg.textContent = "Could not reach the server.";
+            }
+        }
+
+        function updateCount() {
+            document.getElementById('char-count').textContent = document.getElementById('bio-input').value.length;
+        }
+    </script>
+</body>
+</html>
