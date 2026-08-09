@@ -4,47 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Squaretopia Profile</title>
-    <style>
-        /* Same look as the dashboard so the two pages feel like one site. */
-
-        body { font-family: Verdana, Geneva, Tahoma, sans-serif; background: #0d0d14; color: #ddd; margin: 0; font-size: 12px; }
-        a { color: #4aa3df; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-
-        .topbar { background: linear-gradient(#252538, #16161f); border-bottom: 2px solid #3498db; padding: 0 15px; display: flex; align-items: center; gap: 20px; height: 42px; }
-        .brand { font-size: 1.25rem; font-weight: bold; color: white; letter-spacing: 1px; }
-        .brand span { color: #3498db; }
-        .topnav { display: flex; gap: 15px; flex: 1; }
-        .topnav a { color: #ccc; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .topbar-user { font-size: 0.75rem; color: #888; }
-
-        .wrap { max-width: 720px; margin: 16px auto; padding: 0 10px; }
-        .panel { background: #1a1a26; border: 1px solid #2c2c3a; margin-bottom: 12px; }
-        .panel-head { background: linear-gradient(#2f2f45, #232332); padding: 6px 10px; font-size: 0.72rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #bbb; border-bottom: 1px solid #2c2c3a; }
-        .panel-body { padding: 14px; }
-
-        button { font-family: inherit; border: none; border-radius: 3px; font-weight: bold; cursor: pointer; padding: 7px 14px; font-size: 0.75rem; }
-        .btn-blue { background: linear-gradient(#4aa3df, #2e86c1); color: white; }
-        .btn-grey { background: #33334a; color: #ccc; }
-        button:hover { filter: brightness(1.12); }
-
-        textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 3px; border: 1px solid #3a3a4d; background: #0f0f18; color: white; font-family: inherit; font-size: 0.78rem; resize: vertical; min-height: 70px; }
-
-        /* Profile header */
-        .profile-top { display: flex; gap: 16px; align-items: flex-start; }
-        .profile-square { width: 110px; height: 110px; border: 3px solid #2c2c3a; flex-shrink: 0; }
-        .profile-info { flex: 1; min-width: 0; }
-        .profile-name { font-size: 1.6rem; font-weight: bold; color: white; margin: 0 0 4px; word-wrap: break-word; }
-        .profile-meta { color: #777; font-size: 0.72rem; margin-bottom: 10px; }
-        .profile-bio { color: #bbb; font-size: 0.8rem; line-height: 1.6; word-wrap: break-word; white-space: pre-wrap; }
-
-        .swatch-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: #888; font-size: 0.72rem; }
-        .swatch-chip { width: 16px; height: 16px; border: 1px solid #444; }
-
-        .notice { color: #888; text-align: center; padding: 30px 10px; font-size: 0.82rem; }
-        .char-count { color: #666; font-size: 0.68rem; text-align: right; margin-top: 4px; }
-        .hidden { display: none; }
-    </style>
+    <!-- All styling lives in style.css so this page and the profile page stay consistent. -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -56,14 +17,14 @@
         <div class="topbar-user"><a href="index.html">Back to dashboard</a></div>
     </div>
 
-    <div class="wrap">
+    <div class="wrap-narrow">
 
         <!-- PROFILE -->
         <!-- Shows one player. The username comes from the link, and the backend looks them up in the hash table. -->
 
         <div class="panel">
             <div class="panel-head">Player Profile</div>
-            <div class="panel-body" id="profile-body">
+            <div class="panel-body-wide" id="profile-body">
                 <p class="notice">Loading profile...</p>
             </div>
         </div>
@@ -73,13 +34,13 @@
 
         <div class="panel hidden" id="edit-panel">
             <div class="panel-head">Edit Your Bio</div>
-            <div class="panel-body">
+            <div class="panel-body-wide">
                 <textarea id="bio-input" maxlength="200" placeholder="Say something about yourself" oninput="updateCount()"></textarea>
                 <div class="char-count"><span id="char-count">0</span> / 200</div>
-                <div style="height:8px;"></div>
+                <div class="spacer"></div>
                 <button class="btn-blue" onclick="saveBio()">SAVE BIO</button>
                 <button class="btn-grey" onclick="location.href='index.html'">BACK</button>
-                <span id="save-msg" style="margin-left:10px; font-size:0.72rem;"></span>
+                <span id="save-msg" class="save-msg"></span>
             </div>
         </div>
 
@@ -161,6 +122,7 @@
             info.append(name, meta, bio);
 
             // The color they are currently wearing in the client.
+
             const swatchRow = document.createElement('div');
             swatchRow.className = 'swatch-row';
             const chip = document.createElement('span');
@@ -174,11 +136,31 @@
             top.append(square, info);
             body.append(top);
 
-            // Only your own profile gets the editor.
+            // Only your own profile gets the editor. Somebody else's gets the add friend button instead.
+
             if (data.username === loggedInUser) {
                 document.getElementById('edit-panel').classList.remove('hidden');
                 document.getElementById('bio-input').value = data.bio || "";
                 updateCount();
+            }
+            else if (loggedInUser) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-blue';
+                btn.id = 'follow-btn';
+                btn.textContent = 'FOLLOW';
+
+                const msg = document.createElement('span');
+                msg.className = 'save-msg';
+                msg.id = 'follow-msg';
+
+                const row = document.createElement('div');
+                row.className = 'spacer';
+                body.append(row, btn, msg);
+
+                // Ask the server whether we already follow them, and whether they
+                // follow us, so the button says the right thing before it is clicked.
+                
+                loadFollowStatus(data.username);
             }
         }
 
@@ -198,11 +180,22 @@
             const saveMsg = document.getElementById('save-msg');
 
             try {
+                // The server takes our identity from the token, so the bio we send
+                // can only ever be our own.
                 const response = await fetch('/api/update-bio', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: loggedInUser, bio: bio })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem("squaretopia_token")
+                    },
+                    body: JSON.stringify({ bio: bio })
                 });
+
+                if (response.status === 401) {
+                    saveMsg.style.color = '#ff6b6b';
+                    saveMsg.textContent = "Session expired, log in again.";
+                    return;
+                }
 
                 if (!response.ok) {
                     saveMsg.style.color = '#ff6b6b';
@@ -216,6 +209,72 @@
             } catch (err) {
                 saveMsg.style.color = '#ff6b6b';
                 saveMsg.textContent = "Could not reach the server.";
+            }
+        }
+
+        // Works out what the follow button should say. The server tells us both
+        // directions, so we can also show when two players follow each other.
+
+        let alreadyFollowing = false;
+
+        async function loadFollowStatus(username) {
+            const btn = document.getElementById('follow-btn');
+            const msg = document.getElementById('follow-msg');
+
+            try {
+                const response = await fetch('/api/follow-status/' + encodeURIComponent(username), {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem("squaretopia_token") }
+                });
+                if (!response.ok) return;
+
+                const data = await response.json();
+                alreadyFollowing = data.iFollow;
+
+                btn.textContent = alreadyFollowing ? 'UNFOLLOW' : 'FOLLOW';
+                btn.onclick = () => toggleFollow(username);
+
+                if (data.followsMe) {
+                    msg.style.color = '#888';
+                    msg.textContent = alreadyFollowing ? "You follow each other" : "Follows you";
+                }
+            } catch (err) {
+                console.log("Could not load follow status", err);
+            }
+        }
+
+        // Follows or unfollows depending on where we currently stand. The server
+        // takes who is doing the following from the token, we only say who.
+
+        async function toggleFollow(username) {
+            const btn = document.getElementById('follow-btn');
+            const msg = document.getElementById('follow-msg');
+            const route = alreadyFollowing ? '/api/unfollow' : '/api/follow';
+
+            try {
+                const response = await fetch(route, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem("squaretopia_token")
+                    },
+                    body: JSON.stringify({ target: username })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    msg.style.color = '#ff6b6b';
+                    msg.textContent = data.error || "Could not do that.";
+                    return;
+                }
+
+                alreadyFollowing = !alreadyFollowing;
+                btn.textContent = alreadyFollowing ? 'UNFOLLOW' : 'FOLLOW';
+                msg.style.color = '#6bff6b';
+                msg.textContent = alreadyFollowing ? "Following!" : "Unfollowed.";
+            } catch (err) {
+                msg.style.color = '#ff6b6b';
+                msg.textContent = "Could not reach the server.";
             }
         }
 

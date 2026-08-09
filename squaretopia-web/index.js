@@ -2,10 +2,24 @@
 // This file just starts the server and wires the pieces together, the actual
 // routes live in the routes folder so this does not grow into one long file (also proper development practice)
 
+require('dotenv').config();
+
 const express = require('express');
 const { PORT } = require('./config');
 const authRoutes = require('./routes/auth');
 const playerRoutes = require('./routes/players');
+
+// Stops right away if the token secret is missing rather than starting up and
+// signing tokens with nothing. Keeping the secret in .env instead of in the
+// source is the practifce carried over from CS 465.
+
+if (!process.env.JWT_SECRET) {
+    console.error("-----------------------------------------");
+    console.error("JWT_SECRET is missing from your .env file.");
+    console.error("Add a line like: JWT_SECRET=some_long_random_string");
+    console.error("-----------------------------------------");
+    process.exit(1);
+}
 
 const app = express();
 

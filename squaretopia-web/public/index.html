@@ -78,6 +78,23 @@
                         </div>
                     </div>
 
+                    <!-- FOLLOWING AND FOLLOWERS -->
+                    <!-- Both panels come out of the same follows table, the only difference is which side of the link is being matched. -->
+
+                    <div class="panel">
+                        <div class="panel-head">Following</div>
+                        <div class="panel-body">
+                            <div id="following-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">Followers</div>
+                        <div class="panel-body">
+                            <div id="followers-list"></div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- MIDDLE COLUMN -->
@@ -119,7 +136,7 @@
                     <a href="#" onclick="logout(); return false;">Sign Out</a>
                 </div>
                 <div class="footer-small">
-                    Squaretopia is a capstone project built by Felix for CS 499, the Computer Science Capstone at SNHU.
+                    Squaretopia is a project built by Felix for CS 499, the Computer Science Capstone at SNHU.
                     The client is written in Rust with Bevy and the site runs on Node, Express, and MySQL.
                 </div>
             </div>
@@ -137,14 +154,42 @@
         // Remember the session across page loads, like the old client did.
         // If a user was saved last time, skip straight to the dashboard and sync the color picker to whatever is stored in the database.
 
-        window.onload = function() {
+        window.onload = async function() {
             const savedUser = localStorage.getItem("squaretopia_user");
-            if (savedUser) {
-                loggedInUser = savedUser;
-                showDashboard();
-                loadMyProfile();
-            }
+            if (!savedUser) return;
+
+            loggedInUser = savedUser;
+
+            // Ask the database whether this account is still there before drawing
+            // the dashboard. Everything else on this page reads the in-memory
+            // index, which cannot tell that a row was deleted, so without this
+            // check a signed out account would keep looking signed in.
+            const stillValid = await checkSession();
+            if (!stillValid) return;
+
+            showDashboard();
+            loadMyProfile();
         };
+
+        // Returns false and ends the session if the server no longer recognises us.
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/me', { headers: authHeaders() });
+
+                if (response.status === 401) {
+                    accountGone();
+                    return false;
+                }
+
+                return true;
+            } catch (err) {
+                // Server unreachable is not the same as being logged out, so we
+                // leave the session alone and let the page load.
+                console.log("Could not check session", err);
+                return true;
+            }
+        }
 
         // Swap the login form over to the dashboard view, then fill in the panels
         // that need data from the server.
@@ -156,6 +201,7 @@
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('dashboard-section').classList.remove('hidden');
             showDirectory();
+            loadFollows();
         }
 
         // Pulls your own profile so the member panel shows your real color and bio.
@@ -163,6 +209,15 @@
         async function loadMyProfile() {
             try {
                 const response = await fetch('/api/profile/' + encodeURIComponent(loggedInUser));
+
+                // The account we are signed in as is not there anymore, which can
+                // happen because a token stays valid on its own until it expires.
+                // Better to end the session than leave a half loaded page.
+                if (response.status === 404) {
+                    sessionExpired();
+                    return;
+                }
+
                 if (!response.ok) return;
                 const data = await response.json();
                 applyMyProfile(data.color, data.bio);
@@ -218,6 +273,10 @@
                 const data = await response.json();
                 loggedInUser = data.username;
                 localStorage.setItem("squaretopia_user", loggedInUser);
+
+                // The token is the proof the server actually checked us. Every
+                // request that changes something sends it back.
+                localStorage.setItem("squaretopia_token", data.token);
                 showDashboard();
                 loadMyProfile();
             } else {
@@ -252,11 +311,19 @@
 
         async function saveProfile() {
             const color = document.getElementById('colorPicker').value;
-            await fetch('/api/update-profile', {
+
+            // No username in the body anymore. The server works out who we are
+            // from the token, so this request cannot be about anyone else.
+            const response = await fetch('/api/update-profile', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: loggedInUser, color: color })
+                headers: authHeaders(),
+                body: JSON.stringify({ color: color })
             });
+
+            if (response.status === 401) {
+                sessionExpired();
+                return;
+            }
             document.getElementById('member-square').style.backgroundColor = color;
             document.getElementById('big-square').style.backgroundColor = color;
             showDirectory();
@@ -289,8 +356,7 @@
         }
 
         // PLAYER SEARCH
-        // Runs as the user types, but waits for a short pause first instead of firing
-        // a request on every single keystroke.
+        // Runs as the user types, but waits for a short pause first instead of firing a request on every keystroke.
 
         let searchTimer = null;
 
@@ -304,6 +370,7 @@
             const box = document.getElementById('search-results');
 
             // Nothing typed, so show nothing rather than every account.
+
             if (term.length === 0) {
                 box.replaceChildren();
                 return;
@@ -325,6 +392,9 @@
         }
 
         // Draws the result rows.
+        // Everything from the database is written with textContent and never as raw
+        // HTML. A username is text another person chose, so putting it in the page
+        // as HTML would let one account run script in someone else's browser.
 
         function renderResults(box, results) {
             box.replaceChildren();
@@ -409,10 +479,86 @@
             }
         }
 
+        // Builds the headers for any request that changes data. 
+        // The token goes in the Authorization header, which is where the server looks for it.
+
+        function authHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem("squaretopia_token")
+            };
+        }
+
+        // Tokens run out after an hour, so if the server says our session is no
+        // longer good we clear it and send the user back to the login screen
+        // instead of leaving them clicking buttons that quietly do nothing.
+
+        function sessionExpired() {
+            alert("Your session expired. Please log in again.");
+            logout();
+        }
+
+        // Different from expiring. The token was fine, the account behind it is not. This is our account deletion check.
+
+        function accountGone() {
+            alert("That account no longer exists. Signing you out.");
+            logout();
+        }
+
+        // FOLLOWING AND FOLLOWERS
+        // One function for both, since the two lists have the same shape and only
+        // differ by which route they ask for.
+
+        async function loadFollowList(route, boxId, emptyText) {
+            const box = document.getElementById(boxId);
+            try {
+                const response = await fetch('/api/' + route + '/' + encodeURIComponent(loggedInUser));
+                if (!response.ok) return;
+                const data = await response.json();
+
+                box.replaceChildren();
+
+                if (data.count === 0) {
+                    const note = document.createElement('p');
+                    note.className = 'search-note';
+                    note.textContent = emptyText;
+                    box.append(note);
+                    return;
+                }
+
+                for (const player of data.players) {
+                    const row = document.createElement('div');
+                    row.className = 'result-row';
+                    row.onclick = () => openProfile(player.username);
+
+                    const swatch = document.createElement('div');
+                    swatch.className = 'result-swatch';
+                    if (/^#[0-9a-fA-F]{6}$/.test(player.color || "")) {
+                        swatch.style.backgroundColor = player.color;
+                    }
+
+                    const name = document.createElement('span');
+                    name.className = 'result-name';
+                    name.textContent = player.username;
+
+                    row.append(swatch, name);
+                    box.append(row);
+                }
+            } catch (e) {
+                console.log("Could not load " + route, e);
+            }
+        }
+
+        function loadFollows() {
+            loadFollowList('following', 'following-list', "Not following anyone yet.");
+            loadFollowList('followers', 'followers-list', "No followers yet.");
+        }
+
         // Clears the saved session and reloads back to the login screen.
 
         function logout() {
             localStorage.removeItem("squaretopia_user");
+            localStorage.removeItem("squaretopia_token");
             location.reload();
         }
     </script>
