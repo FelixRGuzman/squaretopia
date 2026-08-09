@@ -7,11 +7,11 @@
 
 -- mysql -u root -p < schema.sql
 
--- This is not the same job as migrate.js. That is an outdated script is for converting an
+-- This is not the same job as migrate.js. That is an older script for converting an
 -- existing install off the old single table design and hashing the passwords it
 -- finds there. This file is for a fresh start where there is nothing to convert.
 
--- The order below matters. profiles and friends both point at users, and a
+-- The order below matters. profiles and follows both point at users, and a
 -- foreign key cannot reference a table that does not exist yet, so users has to be created first.
 --=======================================================================================================
 

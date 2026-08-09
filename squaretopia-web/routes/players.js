@@ -49,9 +49,9 @@ router.post('/update-profile', authenticateJWT, async (req, res) => {
             [color, username]
         );
 
-// A valid token does not prove the account is still there. Tokens are
-// // self contained and stay good until they expire, so one can outlive the row it points at if that account gets deleted. 
-// If the update matched nothing then the account is gone, and we must not put it back into the search index.
+// A valid token does not prove the account exists. Tokens are self contained and do not rely on outside intervention.
+// And stay good until they expire, so they COULD outlive the row it points at if that account gets deleted. 
+// That said, if nothing is matched and the account is gone (deleted), we must not put it back into the search index.
 
         if (result.affectedRows === 0) {
             console.log(`[Profile] Token for missing account: ${username}`);
