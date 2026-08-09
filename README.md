@@ -2,7 +2,7 @@
  
 ## About this project
  
-Squaretopia is the CS 499 capstone enhancement of an earlier prototype called Pixgate. The original Pixgate client was written in the Godot engine using GDScript. This project will contain three enhancements across the areas of software design and engineering, data structures and algorithms, and finally databases.
+Squaretopia is the CS 499 capstone enhancement of an earlier prototype called Pixgate. The original Pixgate client was written in the Godot engine using GDScript. This project contains three enhancements across the areas of software design and engineering, data structures and algorithms, and finally databases.
  
 We tackle the Software Design and Engineering enhancement in Milestone Two. In this milestone the client is rewritten in Rust with the Bevy engine, the website-to-client data handoff is rebuilt, and the original's hardcoded paths and missing documentation are addressed to some extent.
  
@@ -154,7 +154,7 @@ squaretopia/
   README.md                   This file
 ```
  
-## Not done yet (planned for later milestones)
+## Not done yet (planned for the future)
  
 These are deliberately out of scope:
  
