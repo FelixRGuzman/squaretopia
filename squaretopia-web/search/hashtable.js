@@ -23,6 +23,25 @@
 // Initially, we had 8 courses and just doubled it, players are not a fixed list like a course catalog so this is
 // only the starting size now and the table grows past it on its own
 
+/* NEW COMMENTS FOR FINAL SUBMISSION:
+
+A quick note on speed, since that is worth explaining for a data structure.
+
+Also doing so, to comply with the video requirements.
+
+To summarize:
+
+Looking up one exact name is O(1), so it stays fast no matter how many players there are.
+Partial search has to check everything, so it is O(n), which is why the results are capped.
+
+O(1) = the time stays the same no matter how much data there is, because we jump straight to one slot.
+O(n) = the time grows with the amount of data, because every player has to be checked one by one.
+
+I will also leave other quick comments around essential functions giving small details regarding
+this adjustment.
+
+*/
+
 const INITIAL_TABLE_SIZE = 16;
 
 // Players are divided by slots, which works out to the average chain length. Once we pass this the chains
@@ -94,6 +113,8 @@ function insertPlayer(player) {
 
 // Here is our resizeTable function, this is new and did not exist in the C++ version
 
+// O(n) since everyone gets hashed again, but it only runs when the table doubles so it is rare.
+
 function resizeTable() {
     const oldTable = hashTable;
     const oldSize = tableSize;
@@ -148,6 +169,8 @@ function loadPlayers(rows) {
 // Our search function, works just like desired, will return the player if they exist
 // this is the fast one, we work out the slot and only check that one short chain.
 
+// O(1) on average. Checking players one by one would be O(n) and would get slower with every account.
+
 function searchPlayer(username) {
     if (!isDataLoaded) { // added an extra check, the C++ search was missing this and just said not found
         console.log("The player index has not been loaded yet.");
@@ -173,6 +196,8 @@ function searchPlayer(username) {
 // This one checks every slot, which is the slow thing a hash table normally saves us from. 
 // The function scatters names on purpose, so "coo" is sent nowhere near "coolio" and there is no slot to jump to
 // The result cap is how we keep that slower path under control.
+
+// O(n), since there is no slot to jump to for a partial term. The cap is what keeps that under control.
 
 function searchPartial(term) {
     if (!isDataLoaded) {
@@ -211,6 +236,9 @@ function searchPartial(term) {
 
 // displaying all players in the desired alphanumeric order
 // the table has no order of its own since names get scattered, so we collect everyone and then sort
+
+// O(n log n), the sort is the more complex part. That means the time grows a bit faster than the number of players..
+// This is because sorting has to compare names against each other rather than just walk the list once.
 
 function printPlayerList() {
     if (!isDataLoaded) { // added an extra check that makes the program more logical and easier for the user
